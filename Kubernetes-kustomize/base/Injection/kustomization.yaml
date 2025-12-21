@@ -1,0 +1,7 @@
+generatorOptions:
+  disableNameSuffixHash: true
+
+configMapGenerator:
+- name: dt-bulk-suppress-script
+  files:
+  - ../../base/Injection/bulk-suppress.js

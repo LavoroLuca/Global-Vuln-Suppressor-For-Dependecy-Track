@@ -1,0 +1,5 @@
+namespace: dtrack
+
+resources:
+- ../../base/Injection
+- ../../base/Nginx

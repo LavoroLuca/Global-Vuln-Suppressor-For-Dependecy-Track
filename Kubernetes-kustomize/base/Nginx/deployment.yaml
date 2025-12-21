@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dt-frontend-proxy
+  namespace: dtrack
+  labels:
+    app: dt-frontend-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dt-frontend-proxy
+  template:
+    metadata:
+      labels:
+        app: dt-frontend-proxy
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.25-alpine
+        ports:
+        - containerPort: 8080
+          name: http
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /etc/nginx/conf.d/default.conf
+          subPath: default.conf
+        - name: custom-scripts
+          mountPath: /usr/share/nginx/html/custom
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: dt-nginx-config
+      - name: custom-scripts
+        configMap:
+          name: dt-bulk-suppress-script

@@ -1,0 +1,11 @@
+resources:
+- deployment.yaml
+- service.yaml
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+configMapGenerator:
+- name: dt-nginx-config
+  files:
+  - ../../base/Nginx/default.conf
