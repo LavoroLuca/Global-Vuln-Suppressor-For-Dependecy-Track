@@ -147,9 +147,6 @@
                         <h5 class="modal-title">
                             <i class="fa fa-shield"></i> Select Projects to Suppress ${vulnId}
                         </h5>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
                     </div>
                     <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
                         <div class="mb-3">
@@ -280,7 +277,6 @@
         }
 
         modal.querySelector('[data-dismiss="modal"]').addEventListener('click', closeModal);
-        modal.querySelector('.close').addEventListener('click', closeModal);
         backdrop.addEventListener('click', closeModal);
 
         // Confirm handler
