@@ -8,6 +8,35 @@
     const API_BASE_URL = window.location.origin;
     const CHECK_INTERVAL = 1000;
     let lastTableHTML = '';
+    let lastUrl = '';
+
+    // Check if we're on the grouped vulnerabilities tab specifically
+    function isOnGroupedVulnerabilitiesTab() {
+        // Method 1: Check the active tab pane content
+        const activePane = document.querySelector('.tab-pane.active');
+        if (!activePane) return false;
+        
+        // Look for the grouped vulnerabilities specific elements
+        // The grouped tab has specific filter controls like "occurrences-form-group"
+        const hasOccurrencesFilter = activePane.querySelector('#occurrences-form-group');
+        const hasGroupedFilters = activePane.querySelector('#grouped-showInactive-form-group');
+        
+        // If we have these specific grouped view filters, we're on the grouped tab
+        if (hasOccurrencesFilter || hasGroupedFilters) {
+            return true;
+        }
+        
+        // Method 2: Check if the active tab text contains "Grouped"
+        const activeTab = document.querySelector('.nav-tabs .nav-link.active');
+        if (activeTab) {
+        const tabText = activeTab.textContent.trim().toLowerCase();
+            if (tabText.includes('grouped')) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
 
     function getApiKey() {
         const token = sessionStorage.getItem('token');
@@ -61,7 +90,7 @@
         }
     }
 
-    async function suppressVulnerability(projectUuid, componentUuid, vulnerabilityUuid, analysisState) {
+    async function suppressVulnerability(projectUuid, componentUuid, vulnerabilityUuid, analysisState, isSuppressed) {
         const apiKey = getApiKey();
         if (!apiKey) {
             throw new Error('No API key available');
@@ -78,19 +107,19 @@
                         component: componentUuid,
                         vulnerability: vulnerabilityUuid,
                         analysisState: analysisState || 'FALSE_POSITIVE',
-                        suppressed: true,
-                        comment: `Bulk suppression via custom script - State: ${analysisState || 'FALSE_POSITIVE'}`
+                        suppressed: isSuppressed,
+                        comment: `Bulk ${isSuppressed ? 'suppression' : 'unsuppression'} via custom script - State: ${analysisState || 'FALSE_POSITIVE'}`
                     })
                 }
             );
 
             if (!response.ok) {
-                throw new Error(`Suppression failed: ${response.status}`);
+                throw new Error(`Operation failed: ${response.status}`);
             }
 
             return await response.json();
         } catch (error) {
-            console.error('Error suppressing vulnerability:', error);
+            console.error('Error updating vulnerability:', error);
             throw error;
         }
     }
@@ -337,7 +366,7 @@
         button.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Processing...';
 
         try {
-            showToast(`Suppressing ${vulnId} in ${selectedProjects.length} project(s)...`, 'info');
+            showToast(`Processing ${vulnId} in ${selectedProjects.length} project(s)...`, 'info');
 
             let successCount = 0;
             let errorCount = 0;
@@ -361,30 +390,32 @@
 
                     for (const finding of relevantFindings) {
                         if (finding.component && finding.component.uuid) {
+                            // Always set suppressed to true
                             await suppressVulnerability(
                                 project.uuid,
                                 finding.component.uuid,
                                 vulnDetails.uuid,
-                                project.analysisState
+                                project.analysisState,
+                                true  // Always suppress
                             );
                             successCount++;
                         }
                     }
                 } catch (err) {
-                    console.error(`Error suppressing in project ${project.name}:`, err);
+                    console.error(`Error processing project ${project.name}:`, err);
                     errorCount++;
                 }
             }
 
             if (successCount > 0) {
                 showToast(
-                    `Successfully suppressed ${vulnId} in ${successCount} instance(s)!`,
+                    `Successfully processed ${vulnId} in ${successCount} instance(s)!`,
                     'success'
                 );
             }
             if (errorCount > 0) {
                 showToast(
-                    `Failed to suppress in ${errorCount} instance(s)`,
+                    `Failed to process ${errorCount} instance(s)`,
                     'error'
                 );
             }
@@ -393,8 +424,9 @@
             setTimeout(() => {
                 button.disabled = false;
                 button.innerHTML = '<i class="fa fa-ban"></i> Suppress All';
-                window.location.reload();
-            }, 3000);
+                // Force table refresh without full page reload
+                lastTableHTML = '';
+            }, 2000);
 
         } catch (error) {
             console.error('Bulk suppression error:', error);
@@ -404,7 +436,27 @@
         }
     }
 
+    function removeExistingButtons() {
+        // Remove Actions column header if exists
+        const actionsHeader = document.querySelector('th[data-field="actions"]');
+        if (actionsHeader) {
+            actionsHeader.remove();
+        }
+
+        // Remove all action cells
+        const actionCells = document.querySelectorAll('td[data-field="actions"]');
+        actionCells.forEach(cell => cell.remove());
+    }
+
     function addSuppressButtons() {
+        // Only add buttons if we're on the grouped vulnerabilities tab
+        if (!isOnGroupedVulnerabilitiesTab()) {
+            // Remove buttons if they exist and we're not on the right tab
+            removeExistingButtons();
+            lastTableHTML = '';
+            return;
+        }
+
         const table = document.querySelector('.fixed-table-body table');
         if (!table) return;
 
@@ -460,10 +512,67 @@
         });
     }
 
+    // Monitor for tab clicks
+    function monitorTabClicks() {
+        const tabContainer = document.querySelector('.nav-tabs');
+        if (!tabContainer) return;
+
+        tabContainer.addEventListener('click', (e) => {
+            // When a tab is clicked, reset and check after delays to ensure DOM is updated
+            lastTableHTML = '';
+            setTimeout(addSuppressButtons, 100);
+            setTimeout(addSuppressButtons, 300);
+            setTimeout(addSuppressButtons, 500);
+            setTimeout(addSuppressButtons, 1000);
+        });
+    }
+
+    // Use MutationObserver to detect when tab content changes
+    function observeTabChanges() {
+        const tabContent = document.querySelector('.tab-content');
+        if (!tabContent) return;
+
+        const observer = new MutationObserver(() => {
+                lastTableHTML = '';
+                addSuppressButtons();
+        });
+
+        observer.observe(tabContent, {
+            attributes: true,
+            attributeFilter: ['class'],
+            subtree: true,
+            childList: true
+        });
+    }
+
     function init() {
         console.log('Dependency-Track Bulk Suppress Script initialized');
-        setInterval(addSuppressButtons, CHECK_INTERVAL);
+        
+        // Initial check with multiple retries
+        setTimeout(addSuppressButtons, 500);
+        setTimeout(addSuppressButtons, 1000);
         setTimeout(addSuppressButtons, 2000);
+        
+        // Setup monitors
+        setTimeout(() => {
+            monitorTabClicks();
+            observeTabChanges();
+        }, 1000);
+        
+        // Periodic check
+        setInterval(addSuppressButtons, CHECK_INTERVAL);
+        
+        // Monitor for URL/hash changes
+        let currentUrl = window.location.href;
+        setInterval(() => {
+            if (window.location.href !== currentUrl) {
+                currentUrl = window.location.href;
+                lastTableHTML = '';
+                setTimeout(addSuppressButtons, 100);
+                setTimeout(addSuppressButtons, 300);
+                setTimeout(addSuppressButtons, 500);
+            }
+        }, 500);
     }
 
     if (document.readyState === 'loading') {

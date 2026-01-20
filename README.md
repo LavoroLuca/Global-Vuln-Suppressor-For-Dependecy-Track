@@ -109,7 +109,7 @@ The Helm chart uses a predictable naming pattern: `{namespace}-dependency-track-
 ### How It Works
 
 1. **NGINX Proxy** intercepts HTTP responses from Dependency-Track frontend
-2. **JavaScript Injection** - Injects `bulk-suppress.js` before `</body>` tag
+2. **JavaScript Injection** - Injects `bulk-suppress.js` before `</body>` tag only in **/vulnerabilityAudit/grouped** page
 3. **DOM Manipulation** - Script adds "Actions" column with buttons
 4. **API Calls** - Uses Dependency-Track's REST API with user's JWT token
 5. **Bulk Operations** - Processes multiple projects sequentially
