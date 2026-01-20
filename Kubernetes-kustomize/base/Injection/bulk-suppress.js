@@ -443,7 +443,7 @@
             if (!vulnMatch) return;
 
             const vulnSource = vulnMatch[1];
-            const vulnId = vulnMatch[2];
+            const vulnId = decodeURIComponent(vulnMatch[2]);
 
             const td = document.createElement('td');
             td.setAttribute('data-field', 'actions');
