@@ -16,16 +16,27 @@ A Kubernetes-native solution that adds **bulk vulnerability suppression** functi
 This solution enhances Dependency-Track by adding a **"Suppress All"** button in the Grouped Vulnerabilities audit view. When clicked, it:
 
 1. **Shows a modal** with all projects affected by the vulnerability
-2. **Lets you select** which projects to suppress (with "Select All" option)
-3. **Configure analysis states** individually per project or globally:
-   - False Positive
-   - Not Set
-   - Exploitable
-   - In Triage
-   - Resolved
-   - Not Affected
-4. **Bulk suppresses** the vulnerability across selected projects
-5. **Provides feedback** via toast notifications
+2. **Lets you select** which projects to process (with "Select All" option)
+3. **Configure analysis settings** individually per project or globally:
+   - **Suppress**: Mark vulnerability as suppressed or not
+   - **Analysis State**: False Positive, Not Set, Exploitable, In Triage, Resolved, Not Affected
+   - **Justification**: Available only when Analysis State is "Not Affected" (Code Not Present, Code Not Reachable, etc.)
+   - **Vendor Response**: Can Not Fix, Will Not Fix, Update, Rollback, Workaround Available
+   - **Suppression Details**: Free text field for additional context
+   - **Comment**: Free text field for notes
+4. **Apply settings globally** to all selected projects or customize each individually
+5. **Updates ALL instances** including already suppressed vulnerabilities
+6. **Bulk processes** the vulnerability across selected projects with one click
+7. **Provides real-time feedback** via toast notifications
+
+### Key Features
+
+- 🎛️ **Granular Control**: Configure every field of the analysis for each project
+- 🌐 **Global or Individual**: Apply settings to all projects at once or customize per-project
+- 🔄 **Update Existing**: Modify already suppressed vulnerabilities (changes analysis state, justification, etc.)
+- 🎯 **Smart Justification**: Justification field auto-enables only when Analysis State = "Not Affected"
+- ⚡ **Efficient**: Single operation to update vulnerability across multiple projects
+- 📊 **Comprehensive**: All API fields exposed (analysisState, analysisJustification, analysisResponse, analysisDetails, comment, suppressed)
 
 ### Why This Matters
 
@@ -56,48 +67,24 @@ The Helm chart uses a predictable naming pattern: `{namespace}-dependency-track-
 ## 📸 Screenshots
 
 ### Before: Standard Grouped Vulnerabilities View
-```
-┌─────────────────┬──────────┬──────────┬──────────┐
-│ Vulnerability   │ Severity │ Projects │ ...      │
-├─────────────────┼──────────┼──────────┼──────────┤
-│ CVE-2024-12345  │ High     │ 15       │ ...      │
-│ CVE-2024-67890  │ Critical │ 8        │ ...      │
-└─────────────────┴──────────┴──────────┴──────────┘
-```
+<img width="2342" height="503" alt="image" src="https://github.com/user-attachments/assets/688ae983-4ce1-4b5d-9d66-567eb9b42bbb" />
+
 
 ### After: With Bulk Suppression
-```
-┌─────────────────┬──────────┬──────────┬──────────────────────┐
-│ Vulnerability   │ Severity │ Projects │ Actions              │
-├─────────────────┼──────────┼──────────┼──────────────────────┤
-│ CVE-2024-12345  │ High     │ 15       │ [Suppress All] 🆕   │
-│ CVE-2024-67890  │ Critical │ 8        │ [Suppress All] 🆕   │
-└─────────────────┴──────────┴──────────┴──────────────────────┘
-```
+<img width="2356" height="575" alt="image" src="https://github.com/user-attachments/assets/14c4d089-6a29-48c8-9329-52af8e3057a7" />
+
 
 ### Modal: Project Selection with Analysis States
-```
-┌────────────────────────────────────────────────────────────┐
-│  Select Projects to Suppress CVE-2024-12345                │
-├────────────────────────────────────────────────────────────┤
-│  ☑ Select All (15 projects)    │ State: [False Positive ▼]│
-├───┬──────────────────┬─────────┬────────┬─────────────────┤
-│ ☑ │ Project Name     │ Version │ Active │ Analysis State  │
-├───┼──────────────────┼─────────┼────────┼─────────────────┤
-│ ☑ │ frontend-app     │ 2.1.0   │ Yes    │ [False Pos. ▼] │
-│ ☑ │ backend-api      │ 3.0.5   │ Yes    │ [Not Affected▼]│
-│ ☐ │ legacy-service   │ 1.5.2   │ No     │ [In Triage ▼]  │
-└───┴──────────────────┴─────────┴────────┴─────────────────┘
-       15 of 15 selected          [Cancel] [Suppress Selected]
-```
+<img width="2376" height="680" alt="image" src="https://github.com/user-attachments/assets/1c2f3442-390f-4b3d-9c6a-c0345f61d25f" />
+
 
 ## 🏗️ Architecture
 
 ```
-┌─────────────┐      ┌──────────────────┐      ┌─────────────────┐
+┌─────────────┐      ┌──────────────────┐       ┌─────────────────┐
 │   Browser   │─────▶│  NGINX Proxy     │─────▶│  DT Frontend    │
-│             │      │  (Injection)     │      │  (Original)     │
-└─────────────┘      └──────────────────┘      └─────────────────┘
+│             │      │  (Injection)     │       │  (Original)     │
+└─────────────┘      └──────────────────┘       └─────────────────┘
                               │                          │
                               │ injects                  │
                               ▼                          ▼
@@ -149,8 +136,8 @@ namespace: dtrack  # Change to your actual namespace (e.g., dtrack, production, 
 ```nginx
 # Line 6: Update both occurrences of 'dtrack' to match your namespace
 set $backend "dtrack-dependency-track-frontend.dtrack.svc.cluster.local:8080";
-#              ^^^^^                         ^^^^^
-#              namespace prefix              namespace
+#             ^^^^^^                           ^^^^^^
+#             namespace prefix                 namespace
 ```
 
 **Examples:**
